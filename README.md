@@ -1,4 +1,24 @@
-# Sierra
+# Smart Vault - Team Sierra
+
+Smart Vault - Multi Signature Vault with rebalancing and compounding system.
+
+## Vision
+
+<h5>Problem:<h5>
+DeFi users spend a lot of time on compounding yields and rebalancing their portfolio. They have many positions
+which are difﬁcult to manage and remember in constantly changing DeFi environment.
+<h5>Solution:<h5>
+Automated rebalancing and yield compounding seems to be good answer for degen’s needs. Additionally it can be
+secured by the multi signature vault singed by the wallets which can be distributed by the same person through
+the different devices.
+<h5>Goals:<h5>
+- Allow DeFi users to have their entire positions in one place without need to frequent interactions.
+- To have scalable architecture which can be easily maintained.
+- Keep security on high level by multi signature feature.
+
+<img title="SmartVault-InitialArchiteture" alt="Initial architecture for smart Vault" src="/images/SmartVault-InitialArchiteture.png">
+
+<img title="SmartVault-InitialArchiteture" alt="Initial architecture for smart Vault" src="/images/SmartVault-UseCase.png">
 
 ## TODO (MVP)
 - [ ] Vault
