@@ -26,14 +26,14 @@ the different devices.
    - [ ] Deposit function
     - [ ] Withdrawal function
     - [ ] User storage
-    - [ ] User mapping to pool
     - [ ] Swapping feature using routerV2
     - [ ] Configuration of pool (intervals, tokens, proportions to keep)
     - [ ] Creation of pool
 
-- [ ] Rebalancing pool #1 
+- [ ] Rebalancing pools
     - [ ] Interface for price feeds of ETH, WBTC and DAI
     - [ ] Storage mapping of tokens to USD value
+    - [ ] User mapping to pool
     - [ ] Interfaces which provide amount of USD for mentioned assets and all pool
 
 - [ ] Automation contract
@@ -47,7 +47,7 @@ the different devices.
     - [ ] Advanced configuration (compounding intervals, multi signature feature enabled/disabled)
     - [ ] More tokens to choose for pool creation (some LP and yield tokens)
 
-- [ ] Rebalancing pool #2
+- [ ] Rebalancing pools
     - [ ] Additional interfaces in order to get prices new LP and yield tokens (additional querries from dexes)
     
 - [ ] Automation Contract
