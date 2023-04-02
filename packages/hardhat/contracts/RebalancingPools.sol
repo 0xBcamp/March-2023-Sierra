@@ -44,16 +44,16 @@ contract RebalancingPools {
 
   /**
    * @notice Executes once when a contract is created to initialize state variables
-   * @param _deployer - this address will be treated as the owner of the contract
+   *
    *
    */
-  constructor(address _deployer) {
-    owner = _deployer;
+  constructor() {
+    owner = msg.sender;
   }
 
   /* Setters */
   /**
-   * @notice Creates pool for a user with specified parameters
+   * @notice Creates pool for a user with specified parameters. Only Vault will be able to call this.
    * @param _user - user who wants to create the pool
    * _chosenTokens - tokens chosen to the pool
    * _proportions - proportions of tokens in real number
@@ -119,7 +119,7 @@ contract RebalancingPools {
   function getCurrentTokenBalances(address _user) public view returns (uint256[] memory) {
     uint256 idx = 0;
     pool memory l_pool = s_userToPool[_user];
-    uint256[] memory totalBalances;
+    uint256[] memory totalBalances = new uint256[](l_pool.chosenTokens.length);
     for (; idx < l_pool.chosenTokens.length; idx++) {
       totalBalances[idx] = (l_pool.proportions[idx] * uint256(getLatestPrice(l_pool.chosenTokens[idx])));
     }
