@@ -2,7 +2,7 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import "./interface/IUniswap.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./interface/IERC20.sol";
 
 contract multiSigVault {
   /// @notice ------------------events------------------
@@ -12,6 +12,7 @@ contract multiSigVault {
   /// @notice --------------state variables-------------
   address private constant Uniswap_V2_Router02 = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
   address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
   uint256 approvalLimit;
   address[] public addressesToSign;
 
@@ -72,29 +73,34 @@ contract multiSigVault {
   }
 
   /// @notice Swapping an Exact Token for an Enough Token on the vault
-  function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, address _to) external {
-    ERC20(tokenIn).tranferFrom(msg.sender, address(this), amountIn);
-    ERC20(tokenIn).approve(Uniswap_V2_Router02, amountIn);
+  function swap(
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn,
+    uint256 amountOutMin
+  ) external returns (uint256 amountOut) {
+    IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+    IERC20(tokenIn).approve(Uniswap_V2_Router02, amountIn);
 
     address[] memory path;
     path = new address[](3);
-    path[0] = ERC20(tokenIn);
+    path[0] = tokenIn;
     path[1] = WETH;
-    path[2] = ERC(tokenOut);
+    path[2] = tokenOut;
 
     uint256[] memory amounts = IUniswapV2Router(Uniswap_V2_Router02).swapExactTokensForTokens(
       amountIn,
       amountOutMin,
       path,
-      to,
-      block.Timestamp
+      msg.sender,
+      block.timestamp
     );
 
     /// Refund tokenIn when the expected minimum out is not met
     if (amountOutMin > amounts[2]) {
-      ERC20(tokenIn).transfer(msg.sender, amountIn);
+      IERC20(tokenIn).transfer(msg.sender, amounts[0]);
     }
 
-    return amounts[0];
+    return amounts[2];
   }
 }
