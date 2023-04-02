@@ -55,11 +55,11 @@ contract RebalancingPools {
   /**
    * @notice Creates pool for a user with specified parameters. Only Vault will be able to call this.
    * @param _user - user who wants to create the pool
-   * _chosenTokens - tokens chosen to the pool
-   * _proportions - proportions of tokens in real number
-   * _proportionsInPercentage - proportions of tokens in percentage related to total value
-   * _totalValue - total value of the pool in USD
-   * _tolerance - possible violation tolerance to accept
+   * @param _chosenTokens - tokens chosen to the pool
+   * @param _proportions - proportions of tokens in real number
+   * @param _proportionsInPercentage - proportions of tokens in percentage related to total value
+   * @param _totalValue - total value of the pool in USD
+   * @param _tolerance - possible violation tolerance to accept
    */
   function createPool(
     address _user,
@@ -75,6 +75,12 @@ contract RebalancingPools {
     s_userToPool[_user].proportionsInPercentage = _proportionsInPercentage;
     s_userToPool[_user].totalValue = _totalValue;
     s_userToPool[_user].tolerance = _tolerance;
+  }
+
+  function removePool(address _user) external returns (uint256) {
+    uint256 _totalValue = s_userToPool[_user].totalValue;
+    delete s_userToPool[_user];
+    return _totalValue;
   }
 
   /* will be removed temporary function for testing */

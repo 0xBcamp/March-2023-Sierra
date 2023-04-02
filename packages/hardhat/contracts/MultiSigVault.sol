@@ -3,6 +3,7 @@ pragma solidity >=0.8.0 <0.9.0;
 
 import "./interface/IUniswap.sol";
 import "./interface/IERC20.sol";
+import "./RebalancingPools.sol";
 
 contract multiSigVault {
   /// @notice ------------------events------------------
@@ -62,10 +63,15 @@ contract multiSigVault {
 
   /// @notice -------------allows withdraw when approvalLimit is met----------
   function withdraw(uint256 txId) public payable returns (uint256) {
+    
     require(txId < Transactions.length);
     address payable toSend = Transactions[txId]._to;
     require(address(this).balance >= Transactions[txId].amount, "You do not have enough funds");
     require(approvalLimit >= Transactions[txId].signers.length, "You do not have enough signatures");
+
+    /* Check if requested total value is less or equal to total value of pool - rebalancing pools interactions */abi
+    /* removePool interface will be called here */
+
     toSend.transfer(Transactions[txId].amount);
 
     emit withdrawalID(txId);
@@ -103,4 +109,21 @@ contract multiSigVault {
 
     return amounts[2];
   }
+
+  /**
+   * @notice configure user's pool to specific params.
+   * Use IERC20 balanceOf to get total values and achieve proportions
+   * Use swapToProportions to get all
+   * Call createPool from Rebalancing Pools contract
+   */
+  function configureRebalancingPool(
+    address[] memory _chosenTokens,
+    uint256[] memory _proportions,
+    uint256[] memory _proportionsInPercentage,
+    uint256 _tolerance
+  ) external {
+    /* Call createPool from Rebalancing Pools contract */
+  }
+
+  
 }
