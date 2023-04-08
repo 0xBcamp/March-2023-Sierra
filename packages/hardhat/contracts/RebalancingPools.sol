@@ -2,6 +2,7 @@
 pragma solidity ^0.8.7;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "./MultiSigVault.sol";
 
 error NotOwner(address sender, address owner);
 
@@ -18,6 +19,8 @@ struct pool {
  * @notice A contract that returns latest prices of tokens in rebalancing pools from Chainlink Price Feeds and stores pools proportions
  */
 contract RebalancingPools {
+  uint256 constant PERC = 10;
+  MultiSigVault vault;
   address immutable owner;
   mapping(address => pool) s_userToPool;
   mapping(address => AggregatorV3Interface) tokensToPriceFeeds;
@@ -49,6 +52,7 @@ contract RebalancingPools {
    */
   constructor() {
     owner = msg.sender;
+    vault = MultiSigVault(msg.sender);
   }
 
   /* Setters */
@@ -103,7 +107,27 @@ contract RebalancingPools {
   /* @notice This function suppose to be called by the keeper in order to perform rebalancing.
    * Swap tokens with too high USD value into tokens with too low USD value
    * Will interact with vault to rebalance */
-  function rebalance(address _user) external {}
+  function rebalance(address _user) external {
+    (, bytes[] memory tooLowBalance, bytes[] memory tooHighBalance) = checkPercentageProportions(_user);
+    uint256 lowIdx = 0;
+    uint256 highIdx = 0;
+    uint256 lowDelta = 0;
+    address lowTokenAddress;
+    uint256 highDelta = 0;
+    address highTokenAddress;
+    for (; lowIdx < tooLowBalance.length && highIdx < tooHighBalance.length; lowIdx++) {
+      (lowDelta, lowTokenAddress) = abi.decode(tooLowBalance[lowIdx], (uint256, address));
+      (highDelta, highTokenAddress) = abi.decode(tooHighBalance[lowIdx], (uint256, address));
+      if (lowDelta > highDelta) {
+        /* higher balance of one token is not enough */
+        vault.swap(highTokenAddress, lowTokenAddress, highDelta, highDelta - (highDelta / 100));
+        highIdx++;
+      } else {
+        /* higher balance of one token is enough */
+        vault.swap(highTokenAddress, lowTokenAddress, highDelta, (highDelta - (highDelta / 100)));
+      }
+    }
+  }
 
   /* Getters */
   /*
@@ -136,14 +160,30 @@ contract RebalancingPools {
    *  @notice - calculates the current percentage proportions related to total value and returns if the pool is out of balance and
    *  which tokens are lacking and exceeding the proportions
    */
-  function checkPercentageProportions(address _user) public view returns (bool, address[] memory, address[] memory) {
+  function checkPercentageProportions(address _user) public view returns (bool, bytes[] memory, bytes[] memory) {
     bool outOfBalance = false;
-    address[] memory tooLowBalance; // Token addresses where the number of tokens are too low
-    address[] memory tooHighBalance; // Token addresses where the number of tokens are too high
-    uint256 idx = 0;
     pool memory l_pool = s_userToPool[_user];
+    bytes[] memory tooLowBalance = new bytes[](l_pool.chosenTokens.length); // Token addresses where the number of tokens are too low
+    bytes[] memory tooHighBalance = new bytes[](l_pool.chosenTokens.length); // Token addresses where the number of tokens are too high
+    uint256 delta = 0;
+    uint256 idx = 0;
     uint256[] memory totalBalances = getCurrentTokenBalances(_user);
-    for (; idx < l_pool.chosenTokens.length; idx++) {}
+    uint256 totalBalance = getTotalBalanceOfPool(_user);
+
+    for (; idx < l_pool.chosenTokens.length; idx++) {
+      if (((totalBalances[idx] * PERC) / totalBalance) < (l_pool.proportionsInPercentage[idx] - l_pool.tolerance)) {
+        // proportions for token in dollar are lower than configured
+        delta = (l_pool.proportionsInPercentage[idx] - ((totalBalances[idx] * PERC) / totalBalance));
+        tooLowBalance[idx] = abi.encode(delta, l_pool.chosenTokens[idx]);
+      } else if (
+        ((totalBalances[idx] * PERC) / totalBalance) > (l_pool.proportionsInPercentage[idx] + l_pool.tolerance)
+      ) {
+        // proportions for token in dollar are higher than configured
+        delta = (((totalBalances[idx] * PERC) / totalBalance) - l_pool.proportionsInPercentage[idx]);
+        tooHighBalance[idx] = abi.encode(delta, l_pool.chosenTokens[idx]);
+      }
+    }
+    outOfBalance = ((tooLowBalance.length > 0) || (tooHighBalance.length > 0)) ? true : false;
     return (outOfBalance, tooLowBalance, tooHighBalance);
   }
 

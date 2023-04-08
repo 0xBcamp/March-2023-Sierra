@@ -5,7 +5,7 @@ import "./interface/IUniswap.sol";
 import "./interface/IERC20.sol";
 import "./RebalancingPools.sol";
 
-contract multiSigVault {
+contract MultiSigVault {
   /// @notice ------------------events------------------
   event depositDone(address indexed sender, uint256 amount);
   event withdrawalID(uint256 indexed txID);
@@ -13,9 +13,15 @@ contract multiSigVault {
   /// @notice --------------state variables-------------
   address private constant Uniswap_V2_Router02 = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
   address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+  address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
+  RebalancingPools rebalancingPools;
   uint256 approvalLimit;
   address[] public addressesToSign;
+  address[] private vaultUsers;
+  mapping(address => uint256) usersToFunds;
+
+  uint256 constant MINIMUM_AMOUNT = 200 * 10 ** 17; // 0.2 ETH
 
   /// @notice ---------transaction details------------
   struct Transaction {
@@ -49,11 +55,22 @@ contract multiSigVault {
     }
 
     approvalLimit = _approvalLimit;
+    rebalancingPools = new RebalancingPools();
   }
 
   ///  @notice accepts any amount token into the vault
-  function deposit() external payable {
-    emit depositDone(msg.sender, msg.value);
+  function deposit(uint256 _amount, address _tokenAddress) external {
+    require(MINIMUM_AMOUNT <= _amount);
+    require(DAI == _tokenAddress, "Wrong address");
+    if (usersToFunds[msg.sender] == 0) {
+      vaultUsers.push(msg.sender);
+    }
+
+    usersToFunds[msg.sender] += _amount;
+
+    IERC20(_tokenAddress).transferFrom(msg.sender, address(this), _amount);
+
+    emit depositDone(msg.sender, _amount);
   }
 
   /// @notice -----------return the balance of the contract----------------
@@ -63,13 +80,12 @@ contract multiSigVault {
 
   /// @notice -------------allows withdraw when approvalLimit is met----------
   function withdraw(uint256 txId) public payable returns (uint256) {
-    
     require(txId < Transactions.length);
     address payable toSend = Transactions[txId]._to;
     require(address(this).balance >= Transactions[txId].amount, "You do not have enough funds");
     require(approvalLimit >= Transactions[txId].signers.length, "You do not have enough signatures");
 
-    /* Check if requested total value is less or equal to total value of pool - rebalancing pools interactions */abi
+    /* Check if requested total value is less or equal to total value of pool - rebalancing pools interactions */
     /* removePool interface will be called here */
 
     toSend.transfer(Transactions[txId].amount);
@@ -84,8 +100,8 @@ contract multiSigVault {
     address tokenOut,
     uint256 amountIn,
     uint256 amountOutMin
-  ) external returns (uint256 amountOut) {
-    IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+  ) public returns (uint256 amountOut) {
+    //IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
     IERC20(tokenIn).approve(Uniswap_V2_Router02, amountIn);
 
     address[] memory path;
@@ -118,12 +134,32 @@ contract multiSigVault {
    */
   function configureRebalancingPool(
     address[] memory _chosenTokens,
-    uint256[] memory _proportions,
     uint256[] memory _proportionsInPercentage,
+    uint256 _totalValue,
     uint256 _tolerance
   ) external {
+    uint256[] memory proportions = new uint256[](_chosenTokens.length);
+    for (uint idx = 0; idx < _chosenTokens.length; idx++) {
+      if (_chosenTokens[idx] != DAI) {
+        proportions[idx] = (_proportionsInPercentage[idx] * _totalValue) / 1000;
+        proportions[idx] = swap(DAI, _chosenTokens[idx], proportions[idx], 0 /* temporary */);
+      } else {
+        /* DAI -already swapped */
+        proportions[idx] = (_proportionsInPercentage[idx] * _totalValue) / 1000;
+      }
+    }
     /* Call createPool from Rebalancing Pools contract */
+    rebalancingPools.createPool(
+      msg.sender,
+      _chosenTokens,
+      proportions,
+      _proportionsInPercentage,
+      _totalValue,
+      _tolerance
+    );
   }
 
-  
+  function getVaultUsers() external view returns (address[] memory) {
+    return vaultUsers;
+  }
 }
