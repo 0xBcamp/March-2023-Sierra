@@ -52,8 +52,9 @@ module.exports = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      chainId: 31337,
+      //chainId: 31337,
       forking: {
+        enabled: true,
         url: MAINNET_RPC_URL,
       },
     },

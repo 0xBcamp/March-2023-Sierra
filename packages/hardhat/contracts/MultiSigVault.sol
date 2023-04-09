@@ -56,6 +56,7 @@ contract MultiSigVault {
 
         approvalLimit = _approvalLimit;
         rebalancingPools = new RebalancingPools();
+        rebalancingPools.createInitialMapping();
     }
 
     ///  @notice accepts any amount token into the vault
