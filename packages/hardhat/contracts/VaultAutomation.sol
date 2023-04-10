@@ -2,8 +2,20 @@
 pragma solidity ^0.8.8;
 
 import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
+import "./RebalancingPools.sol";
+import "./MultiSigVault.sol";
 
 contract VaultAutomation {
+  uint256 constant REBALANCE = 0x1;
+  uint256 constant COMPOUND = 0x2;
+  MultiSigVault immutable multiSigVault;
+  RebalancingPools immutable rebalancingPools;
+
+  constructor(address _vault, address _rebalancingPools) {
+    multiSigVault = MultiSigVault(_vault);
+    rebalancingPools = RebalancingPools(_rebalancingPools);
+  }
+
   /**
    * @dev This is the function that the Chainlink Keeper nodes call
    * they look for the "upkeepNeeded" to return true for distribution:
@@ -27,13 +39,20 @@ contract VaultAutomation {
     )
   {
     upkeepNeeded = false;
-    performData = abi.encode(0);
+    bool rebalanceNeeded = false;
+    address[] memory users = multiSigVault.getVaultUsers();
     uint256 checkOption = abi.decode(checkData, (uint256));
-    if (checkOption == 1) // Upkeep for pool#1
+    uint256 idx = 0;
+    if (checkOption == REBALANCE) // Upkeep for pool#1
     {
-
+      for (; idx < users.length; idx++) {
+        (rebalanceNeeded, , ) = rebalancingPools.checkPercentageProportions(users[idx]);
+        if (rebalanceNeeded) {
+          break;
+        }
+      }
     }
-
+    performData = abi.encode(idx);
     return (upkeepNeeded, performData);
   }
 
@@ -46,11 +65,11 @@ contract VaultAutomation {
    * and increase possibilities for debug by error codes
    */
   function performUpkeep(bytes calldata performData) external /* override */ {
-    (bool upkeepNeeded, bytes memory data) = checkUpkeep(abi.encode(1));
-    uint256 checkOption = abi.decode(performData, (uint256));
-
+    (bool rebalanceNeeded, bytes memory data) = checkUpkeep(abi.encode(REBALANCE));
+    uint256 idx = abi.decode(performData, (uint256));
+    address[] memory users = multiSigVault.getVaultUsers();
     // Prevents from calling by other actor when conditions from checkUpkeep are not met
-    if ((abi.decode(data, (uint256)) != checkOption) || (!upkeepNeeded)) {
+    if ((abi.decode(data, (uint256)) != idx) || (!rebalanceNeeded)) {
       //revert
     }
 
@@ -63,5 +82,6 @@ contract VaultAutomation {
         }*/
 
     // Main flow
+    rebalancingPools.rebalance(users[idx]);
   }
 }
