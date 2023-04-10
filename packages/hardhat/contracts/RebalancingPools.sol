@@ -57,6 +57,17 @@ contract RebalancingPools {
     }
 
     /* Setters */
+    function setAvailableTokens(address[] memory _tokenAddresses) external {
+        availableTokens = _tokenAddresses;
+    }
+
+    function setPriceFeeds(address[] memory _priceFeedAddresses) external {
+        delete priceFeeds;
+        for (uint i = 0; i < _priceFeedAddresses.length; i++) {
+            priceFeeds.push(AggregatorV3Interface(_priceFeedAddresses[i]));
+        }
+    }
+
     /**
      * @notice Creates pool for a user with specified parameters. Only Vault will be able to call this.
      * @param _user - user who wants to create the pool
