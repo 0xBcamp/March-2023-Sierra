@@ -14,7 +14,7 @@ contract multiSigVault {
   address private constant Uniswap_V2_Router02 = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
   address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-  uint256 approvalLimit;
+  uint256 public approvalLimit;
   address[] public addressesToSign;
 
   /// @notice ---------transaction details------------
@@ -31,6 +31,13 @@ contract multiSigVault {
   /// @notice -----------array of approved signers-------------
   address[] private signatures;
   Transaction[] public Transactions;
+
+  modifier onlyOwner() {
+    for (uint256 i; i < addressesToSign.length; i++) {
+      require(msg.sender == addressesToSign[i], "Not owner");
+    }
+    _;
+  }
 
   /// @dev ------setting the list of signatory and approvalLimit of the vault-------------
   constructor(address[] memory _addressesToSign, uint256 _approvalLimit) {
@@ -63,13 +70,12 @@ contract multiSigVault {
 
   /// @notice -------------allows withdraw when approvalLimit is met----------
   function withdraw(uint256 txId) public payable returns (uint256) {
-    
     require(txId < Transactions.length);
     address payable toSend = Transactions[txId]._to;
     require(address(this).balance >= Transactions[txId].amount, "You do not have enough funds");
     require(approvalLimit >= Transactions[txId].signers.length, "You do not have enough signatures");
 
-    /* Check if requested total value is less or equal to total value of pool - rebalancing pools interactions */abi
+    /* Check if requested total value is less or equal to total value of pool - rebalancing pools interactions abi */
     /* removePool interface will be called here */
 
     toSend.transfer(Transactions[txId].amount);
@@ -110,6 +116,22 @@ contract multiSigVault {
     return amounts[2];
   }
 
+  function addTransaction(address payable _to, uint256 _amount) external payable onlyOwner {
+    Transactions.push(Transaction(_to, _amount, Transactions.length, signatures));
+  }
+
+  function approve(uint256 txId) public onlyOwner {
+    bool approveAllowed = true;
+    for (uint256 j; j < Transactions[txId].signers.length; j++) {
+      if (msg.sender == Transactions[txId].signers[j]) {
+        approveAllowed = false;
+        break;
+      }
+    }
+    require(approveAllowed == true, "You already signed the transaction");
+    Transactions[txId].signers.push(msg.sender);
+  }
+
   /**
    * @notice configure user's pool to specific params.
    * Use IERC20 balanceOf to get total values and achieve proportions
@@ -124,6 +146,4 @@ contract multiSigVault {
   ) external {
     /* Call createPool from Rebalancing Pools contract */
   }
-
-  
 }
