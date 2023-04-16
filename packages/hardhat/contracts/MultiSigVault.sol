@@ -14,7 +14,7 @@ contract MultiSigVault is Ownable {
     /// @notice --------------state variables-------------
     address private Uniswap_V2_Router02 =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    address private WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address private DAI = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address private ACCEPTABLE_TOKEN =
         0x6B175474E89094C44Da98b954EedeAC495271d0F; //DAI by default
 
@@ -24,7 +24,7 @@ contract MultiSigVault is Ownable {
     address[] private vaultUsers;
     mapping(address => uint256) usersToFunds;
 
-    uint256 constant MINIMUM_AMOUNT = 200 * 10 ** 17; // 0.2 ETH
+    uint256 constant MINIMUM_AMOUNT = 10 ** 17; // 0.1
 
     /// @notice ---------transaction details------------
     struct Transaction {
@@ -61,8 +61,8 @@ contract MultiSigVault is Ownable {
         rebalancingPools.createInitialMapping();
     }
 
-    function setWeth(address _weth) external onlyOwner {
-        WETH = _weth;
+    function setDai(address _dai) external onlyOwner {
+        DAI = _dai;
     }
 
     function setAcceptableToken(address _acceptableToken) external onlyOwner {
@@ -89,30 +89,18 @@ contract MultiSigVault is Ownable {
     }
 
     /// @notice -----------return the balance of the contract----------------
-    function getBalance() public view returns (uint256 balance) {
-        return address(this).balance;
+    function getBalance(
+        address _tokenAddress
+    ) public view returns (uint256 balance) {
+        return IERC20(_tokenAddress).balanceOf(address(this));
     }
 
     /// @notice -------------allows withdraw when approvalLimit is met----------
-    function withdraw(uint256 txId) public payable returns (uint256) {
-        require(txId < Transactions.length);
-        address payable toSend = Transactions[txId]._to;
-        require(
-            address(this).balance >= Transactions[txId].amount,
-            "You do not have enough funds"
-        );
-        require(
-            approvalLimit >= Transactions[txId].signers.length,
-            "You do not have enough signatures"
-        );
-
-        /* Check if requested total value is less or equal to total value of pool - rebalancing pools interactions */
-        /* removePool interface will be called here */
-
-        toSend.transfer(Transactions[txId].amount);
-
-        emit withdrawalID(txId);
-        return address(this).balance;
+    function withdraw(address _tokenAddress) public returns (uint256) {
+        uint256 tmp = usersToFunds[msg.sender];
+        usersToFunds[msg.sender] = 0;
+        IERC20(_tokenAddress).transfer(msg.sender, tmp);
+        return tmp;
     }
 
     /// @notice Swapping an Exact Token for an Enough Token on the vault
@@ -126,26 +114,25 @@ contract MultiSigVault is Ownable {
         IERC20(tokenIn).approve(Uniswap_V2_Router02, amountIn);
 
         address[] memory path;
-        path = new address[](3);
+        path = new address[](2);
         path[0] = tokenIn;
-        path[1] = WETH;
-        path[2] = tokenOut;
+        path[1] = tokenOut;
 
         uint256[] memory amounts = IUniswapV2Router(Uniswap_V2_Router02)
             .swapExactTokensForTokens(
                 amountIn,
                 amountOutMin,
                 path,
-                msg.sender,
+                address(this),
                 block.timestamp
             );
 
-        /// Refund tokenIn when the expected minimum out is not met
-        if (amountOutMin > amounts[2]) {
-            IERC20(tokenIn).transfer(msg.sender, amounts[0]);
-        }
+        // /// Refund tokenIn when the expected minimum out is not met
+        // if (amountOutMin > amounts[2]) {
+        //     IERC20(tokenIn).transfer(msg.sender, amounts[0]);
+        // }
 
-        return amounts[2];
+        return amounts[1];
     }
 
     /**
@@ -173,7 +160,7 @@ contract MultiSigVault is Ownable {
                     0 /* temporary */
                 );
             } else {
-                /* DAI -already swapped */
+                /* Accepted token - already swapped */
                 proportions[idx] =
                     (_proportionsInPercentage[idx] * _totalValue) /
                     1000;
