@@ -35,11 +35,11 @@ the different devices.
     - [x] Storage mapping of tokens to USD value
     - [x] User mapping to pool
     - [x] Interfaces which provide amount of USD for mentioned assets and all pool
-    - [ ] Working rebalance function
+    - [x] Working rebalance function
 
 - [ ] Automation contract
     - [x] CheckUpkeep function for calling rebalancing pool #1 token price interfaces
-    - [ ] PerformUpkeep function for calling swaps in order to rebalancing pool #1 once needed (rebalance function was not working)
+    - [x] PerformUpkeep function for calling swaps in order to rebalancing pool #1 once needed (rebalance function was not working)
 
 ## TODO (Nice to have):
 - [ ] Vault
