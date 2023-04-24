@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
 import Web3Modal from "web3modal";
 import "./App.css";
-import { Account, Address, Balance, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch, OneInterface } from "./components";
+import { Account, Address, Balance, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch, OneInterface, StackedExample } from "./components";
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
 import {
@@ -241,7 +241,7 @@ function App(props) {
   });
 
   // Then read your WETH balance like:
-  const myMainnetEthBalance = useContractReader(readContracts, "DAI", "symbol", [
+  const myMainnetDaiSymbol = useContractReader(readContracts, "DAI", "symbol", [
   ]);
 
   const myMainnetWmaticBalance = useContractReader(readContracts, "IWMATIC", "balanceOf", [
@@ -264,9 +264,12 @@ function App(props) {
   const rebalancingPoolsAddress = useContractReader(readContracts, "MultiSigVault", "getRebalancingPoolsAddress");
   console.log("💸 RebalancingPools address:", rebalancingPoolsAddress);
 
-  //const latestWmaticPrice = useContractReader(readContracts, "RebalancingPools", "getLatestPrice", [(readContracts && readContracts.IWMATIC) ? readContracts.WMATIC.address : null]);
-  //const latestDaiPrice = useContractReader(readContracts, "RebalancingPools", "getLatestPrice", [(readContracts && readContracts.DAI) ? readContracts.DAI.address : null]);
+  const latestWmaticPrice = useContractReader(readContracts, "RebalancingPools", "getLatestPrice", ["0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889"]);
+  const latestDaiPrice = useContractReader(readContracts, "RebalancingPools", "getLatestPrice", ["0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F"]);
   const percentageProportions = useContractReader(readContracts, "RebalancingPools", "checkPercentageProportions", [address]);
+  const wmaticProportions = useContractReader(readContracts, "RebalancingPools", "getProportions", [address]);
+  const daiProportions = useContractReader(readContracts, "RebalancingPools", "getProportions", [address]);
+  const proportionsInPercentage = useContractReader(readContracts, "RebalancingPools", "getProportionsInPercentage", [address]);
   console.log("-----------____________-------------:", percentageProportions ? percentageProportions[0] : null);
   const totalBalanceOfPool = useContractReader(readContracts, "RebalancingPools", "getTotalBalanceOfPool", [address]);
 
@@ -300,21 +303,20 @@ function App(props) {
       mainnetContracts
     ) {
       console.log("_____________________________________ 🏗 scaffold-eth _____________________________________");
-      console.log("EXT -> IWMATIC: ", readContracts.IWMATIC);
-      console.log("🌎 mainnetProvider", mainnetProvider);
-      console.log("🏠 localChainId", localChainId);
-      console.log("👩‍💼 selected address:", address);
-      console.log("🕵🏻‍♂️ selectedChainId:", selectedChainId);
-      console.log("💵 yourLocalBalance", yourLocalBalance ? ethers.utils.formatEther(yourLocalBalance) : "...");
-      console.log("💵 yourMainnetBalance", yourMainnetBalance ? ethers.utils.formatEther(yourMainnetBalance) : "...");
+      // console.log("EXT -> IWMATIC: ", readContracts.IWMATIC);
+      // console.log("🌎 mainnetProvider", mainnetProvider);
+      // console.log("🏠 localChainId", localChainId);
+      // console.log("👩‍💼 selected address:", address);
+      // console.log("🕵🏻‍♂️ selectedChainId:", selectedChainId);
+      // console.log("💵 yourLocalBalance", yourLocalBalance ? ethers.utils.formatEther(yourLocalBalance) : "...");
+      // console.log("💵 yourMainnetBalance", yourMainnetBalance ? ethers.utils.formatEther(yourMainnetBalance) : "...");
       console.log("📝 readContracts", readContracts);
       //console.log("🌍 External contracts:", mainnetContracts);
-      console.log("💵 yourMainnetWmaticBalance", myMainnetWmaticBalance);
-      console.log("💵 SYMBOLLLL ->>>>", myMainnetWmaticSymbol);
-
-      console.log("💵 yourMainnetEthBalance", myMainnetEthBalance);
+      console.log("💵 Proportions: %s WMATIC, %s DAI", wmaticProportions, daiProportions);
+      console.log("💵 Percentages %s", percentageProportions ? percentageProportions[1] : null);
 
       console.log("🔐 writeContracts", { writeContracts });
+      console.log("Latest price ", latestWmaticPrice ? latestWmaticPrice.toString() : null)
     }
   }, [
     mainnetProvider,
@@ -639,22 +641,50 @@ function App(props) {
               <Address value={readContracts && readContracts.MultiSigVault && rebalancingPoolsAddress} />
             </div>
 
+            <div>
+              Price of {myMainnetWmaticSymbol}: {latestWmaticPrice ? latestWmaticPrice.toString() / (10 ** 8) : null} $
+              Price of {myMainnetDaiSymbol}: {latestDaiPrice ? latestDaiPrice.toString() / (10 ** 8) : null} $
+            </div>
+            {/* <OneInterface
+              name="RebalancingPools"
+              signer={userSigner}
+              provider={localProvider}
+              address={address}
+              blockExplorer={blockExplorer}
+              contractConfig={contractConfig}
+              interfaceName="getProportions"
+            /> */}
+
             <div style={{ padding: 8 }}>
               <div>Pool proportions:</div>
               <ul >
                 <li style={{ fontSize: 24 }}>Proportions violated: {percentageProportions ? percentageProportions[0].toString() : null}</li>
-                <li>ByteCode for too low: {percentageProportions ? percentageProportions[1] : null}</li>
-                <li>ByteCode for too high: {percentageProportions ? percentageProportions[2] : null}</li>
+                <li>Proportions for too low: {wmaticProportions ? wmaticProportions[0] / (10 ** 18) : null} </li>
+                <li>Proportions for too high: {wmaticProportions ? wmaticProportions[1] / (10 ** 18) : null}</li>
+                <li>Percentage for too low: {proportionsInPercentage ? proportionsInPercentage[0] / 10 : null} %</li>
+                <li>Percentage for too high: {proportionsInPercentage ? proportionsInPercentage[1] / 10 : null} %</li>
+
               </ul>
+
+              <StackedExample />
 
               {/* <Balance balance={percentageProportions ? percentageProportions : null} fontSize={64} /> */}
             </div>
 
             <div style={{ padding: 8 }}>
-              <div>Total balance of pool:</div>
-              <Balance balance={totalBalanceOfPool} fontSize={64} />
+              <div>Total balance of pool: {totalBalanceOfPool ? totalBalanceOfPool / (10 ** 26) : null} </div>
             </div>
 
+            <div style={{ padding: 8 }}>
+              <Button
+                type={"default"}
+                onClick={() => {
+                  tx(writeContracts.RebalancingPools.rebalance(address));
+                }}
+              >
+                📡 Rebalance !
+              </Button>
+            </div>
 
             {/*
                 🎛 this scaffolding is full of commonly used components

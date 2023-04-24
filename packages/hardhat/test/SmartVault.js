@@ -1,6 +1,6 @@
 const { developmentChains, networkConfig } = require("../helper-hardhat-config");
 const { deploymentFixture } = require("../scripts/deploy")
-const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers")
+
 
 
 !developmentChains.includes(network.name)
@@ -34,9 +34,6 @@ const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers")
 
             it("Should be able detect current proportions", async function () {
                 console.log("Loading fixture ... ");
-                const {  /* priceConsumerV3 */ mockV3Aggregator } = await loadFixture(
-                    deployPriceConsumerFixture
-                )
                 const { vault, rebalancing, automation } = await deploymentFixture();
                 console.log("Creating pool ... ");
                 await rebalancing.createPool(accounts[0].address,
@@ -64,9 +61,7 @@ const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers")
 
             it("Should be able detect current proportions", async function () {
                 console.log("Loading fixture ... ");
-                const {  /* priceConsumerV3 */ mockV3Aggregator } = await loadFixture(
-                    deployPriceConsumerFixture
-                )
+
                 const { vault, rebalancing, automation } = await deploymentFixture();
                 console.log("Creating pool ... ");
                 await rebalancing.createPool(accounts[0].address,
@@ -96,9 +91,7 @@ const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers")
             it("Should be able to deposit and swap", async function () {
                 const maticToWrap = 2e17.toString();
                 console.log("Loading fixture ... ");
-                const {  /* priceConsumerV3 */ mockV3Aggregator } = await loadFixture(
-                    deployPriceConsumerFixture
-                )
+
                 const iWmatic = await ethers.getContractAt("IWETH", WMATIC);
                 const iWeth = await ethers.getContractAt("IERC20", WETH);
                 const { vault, rebalancing, automation } = await deploymentFixture();
